@@ -174,6 +174,21 @@ def _median_series(rows: list[dict[str, object]]) -> list[dict[str, object]]:
     ]
 
 
+def benchmark_subtitle(rows: list[dict[str, object]]) -> str:
+    repeats = max(
+        (
+            int(row["repeat"])
+            for row in rows
+            if row["category"] == "synthetic"
+        ),
+        default=0,
+    )
+    return (
+        "Median time to analyze every team; "
+        f"{repeats} repeated runs after one warm-up"
+    )
+
+
 def plot_comparison(rows: list[dict[str, object]], path: Path) -> None:
     """Render the grouped bar chart used in the Markdown report."""
 
@@ -259,7 +274,7 @@ def plot_comparison(rows: list[dict[str, object]], path: Path) -> None:
     fig.text(
         left,
         0.915,
-        "Median time to analyze every team; five repeated runs after one warm-up",
+        benchmark_subtitle(rows),
         ha="left",
         va="top",
         fontsize=9.5,

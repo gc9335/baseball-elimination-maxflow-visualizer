@@ -2,6 +2,7 @@ import csv
 from pathlib import Path
 
 from scripts.benchmark import (
+    benchmark_subtitle,
     generate_random_division,
     plot_comparison,
     validate_algorithms,
@@ -79,3 +80,20 @@ def test_plot_comparison_creates_nonempty_png(tmp_path):
 
     assert path.exists()
     assert path.stat().st_size > 1_000
+
+
+def test_benchmark_subtitle_uses_actual_repeat_count():
+    rows = [
+        {
+            "category": "synthetic",
+            "dataset": "random-8",
+            "teams": 8,
+            "algorithm": algorithm,
+            "repeat": repeat,
+            "elapsed_ms": 1.0,
+        }
+        for algorithm in ("edmonds-karp", "dinic")
+        for repeat in range(1, 4)
+    ]
+
+    assert "3 repeated runs" in benchmark_subtitle(rows)
