@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from baseball_elimination.baseball import BaseballDivision
+from scripts.export_visualizer_data import export_site_data
 
 
 def test_build_network_describes_game_and_team_vertices():
@@ -41,3 +42,19 @@ def test_trace_analysis_handles_trivial_elimination_without_flow_network():
         "trivial-check",
         "completed",
     ]
+
+
+def test_export_visualizer_data_writes_manifest_and_trace_files(tmp_path):
+    export_site_data(
+        datasets=[Path("data/teams4.txt")],
+        output_dir=tmp_path,
+        algorithms=("edmonds-karp", "dinic"),
+    )
+
+    manifest = json.loads((tmp_path / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["datasets"][0]["id"] == "teams4"
+    trace_path = tmp_path / "teams4__Philadelphia__dinic.json"
+    trace = json.loads(trace_path.read_text(encoding="utf-8"))
+    assert trace["schema"] == "baseball-maxflow-trace.v1"
+    assert trace["events"][-1]["type"] == "completed"
+    assert trace_path.name in manifest["datasets"][0]["traces"]

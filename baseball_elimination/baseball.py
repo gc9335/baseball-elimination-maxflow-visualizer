@@ -504,23 +504,13 @@ class BaseballDivision:
             result=result.to_dict(),
         )
 
-        current_edges: list[dict[str, int]] = []
-        materialized_events: list[dict[str, Any]] = []
-        for event in recorder.to_list():
-            payload = event["payload"]
-            if "edges" in payload:
-                current_edges = payload["edges"]
-            else:
-                payload["edges"] = current_edges
-            materialized_events.append(event)
-
         return {
             "schema": "baseball-maxflow-trace.v1",
             "algorithm": algorithm,
             "target_team": team,
             "standings": self._standings_dict(),
             "network": built.to_dict(),
-            "events": materialized_events,
+            "events": recorder.to_list(),
             "metrics": metrics.to_dict(),
             "result": result.to_dict(),
         }
