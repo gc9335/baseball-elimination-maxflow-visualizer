@@ -24,17 +24,32 @@ teams50.txt: teams=50, eliminated=0, solvers=consistent
 teams54.txt: teams=54, eliminated=8, solvers=consistent
 teams60.txt: teams=60, eliminated=18, solvers=consistent
 
-Synthetic benchmark medians (ms)
-================================
-random-8 edmonds-karp: 3.352800
-random-8 dinic: 1.509000
-random-12 edmonds-karp: 22.374200
-random-12 dinic: 6.839300
-random-16 edmonds-karp: 101.091500
-random-16 dinic: 14.726100
-random-20 edmonds-karp: 305.652100
-random-20 dinic: 29.456200
-random-24 edmonds-karp: 789.129500
-random-24 dinic: 52.861400
-random-28 edmonds-karp: 1690.694300
-random-28 dinic: 88.961900
+Synthetic scaling benchmark medians (ms)
+========================================
+random-8 dinic: 3.258300
+random-8 edmonds-karp: 5.977200
+random-12 dinic: 12.062100
+random-12 edmonds-karp: 39.894000
+random-16 dinic: 30.144900
+random-16 edmonds-karp: 168.705900
+random-20 dinic: 61.466000
+random-20 edmonds-karp: 519.702400
+random-24 dinic: 107.242000
+random-24 edmonds-karp: 1307.357700
+random-28 dinic: 157.317900
+random-28 edmonds-karp: 2606.792600
+
+Density benchmark medians (ms)
+==============================
+density=0.19 dinic: 42.259700
+density=0.19 edmonds-karp: 70.145800
+density=0.27 dinic: 47.754100
+density=0.27 edmonds-karp: 99.954900
+density=0.45 dinic: 48.400900
+density=0.45 edmonds-karp: 166.935000
+density=0.65 dinic: 47.708900
+density=0.65 edmonds-karp: 246.095700
+density=0.76 dinic: 55.607900
+density=0.76 edmonds-karp: 340.789100
+density=0.91 dinic: 60.909200
+density=0.91 edmonds-karp: 455.987200

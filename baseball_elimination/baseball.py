@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Callable, Mapping
+from typing import Any, Callable, Mapping
 
 from .dinic import dinic
 from .edmonds_karp import edmonds_karp
 from .flow_network import FlowNetwork
+from .tracing import AlgorithmMetrics, TraceRecorder, snapshot_network
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,63 @@ class EliminationResult:
     max_flow: int
     required_flow: int
     certificate: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        value = asdict(self)
+        value["certificate"] = list(self.certificate)
+        return value
+
+
+@dataclass(frozen=True)
+class NetworkNode:
+    id: int
+    kind: str
+    label: str
+    team: str | None = None
+    teams: tuple[str, str] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        value = asdict(self)
+        if self.teams is not None:
+            value["teams"] = list(self.teams)
+        return value
+
+
+@dataclass(frozen=True)
+class NetworkEdge:
+    id: int
+    start: int
+    end: int
+    capacity: int
+    kind: str
+    edge_index: int
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
+class BuiltEliminationNetwork:
+    target_team: str
+    maximum_wins: int
+    required_flow: int
+    source: int
+    sink: int
+    network: FlowNetwork
+    nodes: tuple[NetworkNode, ...]
+    edges: tuple[NetworkEdge, ...]
+    team_vertices: Mapping[int, int]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "target_team": self.target_team,
+            "maximum_wins": self.maximum_wins,
+            "required_flow": self.required_flow,
+            "source": self.source,
+            "sink": self.sink,
+            "nodes": [node.to_dict() for node in self.nodes],
+            "edges": [edge.to_dict() for edge in self.edges],
+        }
 
 
 @dataclass(frozen=True)
@@ -148,6 +206,139 @@ class BaseballDivision:
     def against(self, team1: str, team2: str) -> int:
         return self._games[self._team_index(team1)][self._team_index(team2)]
 
+    def _solver(
+        self,
+        algorithm: str,
+    ) -> Callable[..., int]:
+        solvers: dict[str, Callable[..., int]] = {
+            "edmonds-karp": edmonds_karp,
+            "dinic": dinic,
+        }
+        try:
+            return solvers[algorithm]
+        except KeyError as exc:
+            choices = ", ".join(solvers)
+            raise ValueError(
+                f"unknown algorithm {algorithm!r}; choose one of: {choices}"
+            ) from exc
+
+    def _trivial_certificate(self, target: int, maximum_wins: int) -> tuple[str, ...]:
+        return tuple(
+            name
+            for index, name in enumerate(self.teams)
+            if index != target and self._wins[index] > maximum_wins
+        )
+
+    def build_elimination_network(self, team: str) -> BuiltEliminationNetwork:
+        """Construct and describe the nontrivial baseball flow network."""
+
+        target = self._team_index(team)
+        maximum_wins = self._wins[target] + self._remaining[target]
+        opponents = [index for index in range(self.number_of_teams) if index != target]
+        game_pairs = [
+            (first, second)
+            for pair_index, first in enumerate(opponents)
+            for second in opponents[pair_index + 1 :]
+        ]
+        source = 0
+        first_game_vertex = 1
+        first_team_vertex = first_game_vertex + len(game_pairs)
+        team_vertices = MappingProxyType(
+            {
+                team_index: first_team_vertex + offset
+                for offset, team_index in enumerate(opponents)
+            }
+        )
+        sink = first_team_vertex + len(opponents)
+        network = FlowNetwork(sink + 1)
+        nodes: list[NetworkNode] = [NetworkNode(source, "source", "Source")]
+        edges: list[NetworkEdge] = []
+
+        for offset, (first, second) in enumerate(game_pairs):
+            game_vertex = first_game_vertex + offset
+            nodes.append(
+                NetworkNode(
+                    game_vertex,
+                    "game",
+                    f"{self.teams[first]} vs {self.teams[second]}",
+                    teams=(self.teams[first], self.teams[second]),
+                )
+            )
+
+        for opponent in opponents:
+            nodes.append(
+                NetworkNode(
+                    team_vertices[opponent],
+                    "team",
+                    self.teams[opponent],
+                    team=self.teams[opponent],
+                )
+            )
+        nodes.append(NetworkNode(sink, "sink", "Sink"))
+
+        required_flow = sum(self._games[first][second] for first, second in game_pairs)
+        infinite_capacity = required_flow + 1
+
+        def add_described_edge(start: int, end: int, capacity: int, kind: str) -> None:
+            edge_index = len(network.graph[start])
+            network.add_edge(start, end, capacity)
+            edges.append(
+                NetworkEdge(
+                    id=len(edges),
+                    start=start,
+                    end=end,
+                    capacity=capacity,
+                    kind=kind,
+                    edge_index=edge_index,
+                )
+            )
+
+        for offset, (first, second) in enumerate(game_pairs):
+            game_vertex = first_game_vertex + offset
+            add_described_edge(
+                source,
+                game_vertex,
+                self._games[first][second],
+                "source-game",
+            )
+            add_described_edge(
+                game_vertex,
+                team_vertices[first],
+                infinite_capacity,
+                "game-team",
+            )
+            add_described_edge(
+                game_vertex,
+                team_vertices[second],
+                infinite_capacity,
+                "game-team",
+            )
+
+        for opponent in opponents:
+            capacity = maximum_wins - self._wins[opponent]
+            if capacity < 0:
+                raise ValueError(
+                    f"{team} is trivially eliminated by {self.teams[opponent]}"
+                )
+            add_described_edge(
+                team_vertices[opponent],
+                sink,
+                capacity,
+                "team-sink",
+            )
+
+        return BuiltEliminationNetwork(
+            target_team=team,
+            maximum_wins=maximum_wins,
+            required_flow=required_flow,
+            source=source,
+            sink=sink,
+            network=network,
+            nodes=tuple(nodes),
+            edges=tuple(edges),
+            team_vertices=team_vertices,
+        )
+
     def analyze(
         self,
         team: str,
@@ -155,25 +346,11 @@ class BaseballDivision:
     ) -> EliminationResult:
         """Determine whether team is mathematically eliminated."""
 
-        solvers: dict[str, Callable[[FlowNetwork, int, int], int]] = {
-            "edmonds-karp": edmonds_karp,
-            "dinic": dinic,
-        }
-        try:
-            solver = solvers[algorithm]
-        except KeyError as exc:
-            choices = ", ".join(solvers)
-            raise ValueError(
-                f"unknown algorithm {algorithm!r}; choose one of: {choices}"
-            ) from exc
+        solver = self._solver(algorithm)
 
         target = self._team_index(team)
         maximum_wins = self._wins[target] + self._remaining[target]
-        trivial_certificate = tuple(
-            name
-            for index, name in enumerate(self.teams)
-            if index != target and self._wins[index] > maximum_wins
-        )
+        trivial_certificate = self._trivial_certificate(target, maximum_wins)
         if trivial_certificate:
             return EliminationResult(
                 team,
@@ -185,46 +362,16 @@ class BaseballDivision:
                 trivial_certificate,
             )
 
-        opponents = [index for index in range(self.number_of_teams) if index != target]
-        game_pairs = [
-            (first, second)
-            for pair_index, first in enumerate(opponents)
-            for second in opponents[pair_index + 1 :]
-        ]
-        source = 0
-        first_game_vertex = 1
-        first_team_vertex = first_game_vertex + len(game_pairs)
-        team_vertices = {
-            team_index: first_team_vertex + offset
-            for offset, team_index in enumerate(opponents)
-        }
-        sink = first_team_vertex + len(opponents)
-        network = FlowNetwork(sink + 1)
-
-        required_flow = sum(self._games[first][second] for first, second in game_pairs)
-        infinite_capacity = required_flow + 1
-        for offset, (first, second) in enumerate(game_pairs):
-            game_vertex = first_game_vertex + offset
-            network.add_edge(source, game_vertex, self._games[first][second])
-            network.add_edge(game_vertex, team_vertices[first], infinite_capacity)
-            network.add_edge(game_vertex, team_vertices[second], infinite_capacity)
-
-        for opponent in opponents:
-            network.add_edge(
-                team_vertices[opponent],
-                sink,
-                maximum_wins - self._wins[opponent],
-            )
-
-        maximum_flow = solver(network, source, sink)
-        eliminated = maximum_flow < required_flow
+        built = self.build_elimination_network(team)
+        maximum_flow = solver(built.network, built.source, built.sink)
+        eliminated = maximum_flow < built.required_flow
         certificate: tuple[str, ...] = ()
         if eliminated:
-            source_side = network.source_side(source)
+            source_side = built.network.source_side(built.source)
             certificate = tuple(
                 self.teams[opponent]
-                for opponent in opponents
-                if team_vertices[opponent] in source_side
+                for opponent, vertex in built.team_vertices.items()
+                if vertex in source_side
             )
 
         return EliminationResult(
@@ -233,6 +380,137 @@ class BaseballDivision:
             False,
             maximum_wins,
             maximum_flow,
-            required_flow,
+            built.required_flow,
             certificate,
         )
+
+    def _standings_dict(self) -> dict[str, Any]:
+        return {
+            "teams": [
+                {
+                    "name": name,
+                    "wins": self._wins[index],
+                    "losses": self._losses[index],
+                    "remaining": self._remaining[index],
+                    "games": list(self._games[index]),
+                }
+                for index, name in enumerate(self.teams)
+            ]
+        }
+
+    def trace_analysis(self, team: str, algorithm: str = "dinic") -> dict[str, Any]:
+        """Run an analysis and return a browser-ready trace payload."""
+
+        solver = self._solver(algorithm)
+        target = self._team_index(team)
+        maximum_wins = self._wins[target] + self._remaining[target]
+        trivial_certificate = self._trivial_certificate(target, maximum_wins)
+        recorder = TraceRecorder(algorithm)
+        metrics = AlgorithmMetrics()
+
+        if trivial_certificate:
+            recorder.emit(
+                "trivial-check",
+                "直接淘汰检查",
+                f"{', '.join(trivial_certificate)} 已经超过 {team} 的最大可能胜场 "
+                f"{maximum_wins}。",
+                "trivial-check",
+                certificate=list(trivial_certificate),
+                maximum_wins=maximum_wins,
+            )
+            result = EliminationResult(
+                team,
+                True,
+                True,
+                maximum_wins,
+                0,
+                0,
+                trivial_certificate,
+            )
+            recorder.emit(
+                "completed",
+                f"{team} 被直接淘汰",
+                "无需构造最大流网络。",
+                "terminate",
+                result=result.to_dict(),
+                metrics=metrics.to_dict(),
+            )
+            return {
+                "schema": "baseball-maxflow-trace.v1",
+                "algorithm": algorithm,
+                "target_team": team,
+                "standings": self._standings_dict(),
+                "network": None,
+                "events": recorder.to_list(),
+                "metrics": metrics.to_dict(),
+                "result": result.to_dict(),
+            }
+
+        built = self.build_elimination_network(team)
+        recorder.emit(
+            "network-built",
+            "完成棒球淘汰流网络",
+            f"需要分配的比赛总数为 {built.required_flow}。",
+            "build-network",
+            current_flow=0,
+            edges=snapshot_network(built.network),
+            required_flow=built.required_flow,
+        )
+        maximum_flow = solver(
+            built.network,
+            built.source,
+            built.sink,
+            recorder=recorder,
+            metrics=metrics,
+        )
+        eliminated = maximum_flow < built.required_flow
+        certificate: tuple[str, ...] = ()
+        source_side = built.network.source_side(built.source)
+        if eliminated:
+            certificate = tuple(
+                self.teams[opponent]
+                for opponent, vertex in built.team_vertices.items()
+                if vertex in source_side
+            )
+            recorder.emit(
+                "min-cut",
+                "提取最小割证明集合",
+                f"源侧可达球队为 {', '.join(certificate)}。",
+                "min-cut",
+                current_flow=maximum_flow,
+                source_side=sorted(source_side),
+                certificate=list(certificate),
+                edges=snapshot_network(built.network),
+            )
+
+        result = EliminationResult(
+            team,
+            eliminated,
+            False,
+            maximum_wins,
+            maximum_flow,
+            built.required_flow,
+            certificate,
+        )
+        recorder.emit(
+            "completed",
+            f"{team} {'被淘汰' if eliminated else '仍有机会'}",
+            f"最大流 {maximum_flow} / 待分配比赛 {built.required_flow}。",
+            "terminate",
+            current_flow=maximum_flow,
+            source_side=sorted(source_side),
+            edges=snapshot_network(built.network),
+            metrics=metrics.to_dict(),
+            result=result.to_dict(),
+        )
+
+        return {
+            "schema": "baseball-maxflow-trace.v1",
+            "algorithm": algorithm,
+            "target_team": team,
+            "standings": self._standings_dict(),
+            "network": built.to_dict(),
+            "events": recorder.to_list(),
+            "metrics": metrics.to_dict(),
+            "result": result.to_dict(),
+        }
