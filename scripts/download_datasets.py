@@ -14,6 +14,16 @@ DEFAULT_URL = (
 )
 
 
+def safe_member_path(filename: str) -> PurePosixPath:
+    """Normalize ZIP separators and reject absolute or parent paths."""
+
+    member_path = PurePosixPath(filename.replace("\\", "/"))
+    has_drive = bool(member_path.parts and member_path.parts[0].endswith(":"))
+    if member_path.is_absolute() or has_drive or ".." in member_path.parts:
+        raise ValueError(f"unsafe ZIP member path: {filename}")
+    return member_path
+
+
 def extract_text_datasets(archive_path: Path, destination: Path) -> list[Path]:
     """Safely extract text datasets from an assignment ZIP archive."""
 
@@ -21,9 +31,7 @@ def extract_text_datasets(archive_path: Path, destination: Path) -> list[Path]:
     extracted: list[Path] = []
     with ZipFile(archive_path) as archive:
         for member in archive.infolist():
-            member_path = PurePosixPath(member.filename)
-            if member_path.is_absolute() or ".." in member_path.parts:
-                raise ValueError(f"unsafe ZIP member path: {member.filename}")
+            member_path = safe_member_path(member.filename)
             if member.is_dir() or member_path.suffix.lower() != ".txt":
                 continue
 

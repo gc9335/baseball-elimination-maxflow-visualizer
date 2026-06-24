@@ -3,7 +3,7 @@ from zipfile import ZipFile
 
 import pytest
 
-from scripts.download_datasets import extract_text_datasets
+from scripts.download_datasets import extract_text_datasets, safe_member_path
 
 
 def make_zip(path: Path, members: dict[str, str]) -> Path:
@@ -30,11 +30,7 @@ def test_extract_text_datasets_extracts_txt_files_only(tmp_path):
     assert not (destination / "README.md").exists()
 
 
-def test_extract_text_datasets_rejects_path_traversal(tmp_path):
-    archive = make_zip(
-        tmp_path / "bad.zip",
-        {"../teams4.txt": "malicious"},
-    )
-
+@pytest.mark.parametrize("member_name", ["../teams4.txt", "..\\teams4.txt"])
+def test_member_path_rejects_both_separator_styles(member_name):
     with pytest.raises(ValueError, match="unsafe"):
-        extract_text_datasets(archive, tmp_path / "data")
+        safe_member_path(member_name)
