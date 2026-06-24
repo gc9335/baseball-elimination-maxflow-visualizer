@@ -1,3 +1,8 @@
+import random
+
+import pytest
+
+from baseball_elimination.dinic import dinic
 from baseball_elimination.edmonds_karp import edmonds_karp
 from baseball_elimination.flow_network import FlowNetwork
 
@@ -20,8 +25,9 @@ def build_clrs_network() -> FlowNetwork:
     return network
 
 
-def test_edmonds_karp_finds_clrs_max_flow():
-    assert edmonds_karp(build_clrs_network(), 0, 5) == 23
+@pytest.mark.parametrize("solver", [edmonds_karp, dinic])
+def test_solvers_find_clrs_max_flow(solver):
+    assert solver(build_clrs_network(), 0, 5) == 23
 
 
 def test_edmonds_karp_returns_zero_when_sink_is_unreachable():
@@ -37,3 +43,31 @@ def test_edmonds_karp_leaves_correct_min_cut_reachability():
     edmonds_karp(network, 0, 5)
 
     assert network.source_side(0) == {0, 1, 2, 4}
+
+
+def solve_edges(
+    vertex_count: int,
+    edges: list[tuple[int, int, int]],
+    solver,
+) -> int:
+    network = FlowNetwork(vertex_count)
+    for start, end, capacity in edges:
+        network.add_edge(start, end, capacity)
+    return solver(network, 0, vertex_count - 1)
+
+
+def test_dinic_and_edmonds_karp_match_on_seeded_random_networks():
+    for seed in range(20):
+        generator = random.Random(seed)
+        vertex_count = 8
+        edges = []
+        for start in range(vertex_count - 1):
+            for end in range(start + 1, vertex_count):
+                if generator.random() < 0.35:
+                    edges.append((start, end, generator.randint(1, 20)))
+
+        assert solve_edges(vertex_count, edges, dinic) == solve_edges(
+            vertex_count,
+            edges,
+            edmonds_karp,
+        )
