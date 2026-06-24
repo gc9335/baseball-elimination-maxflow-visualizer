@@ -46,6 +46,7 @@ def dinic(
                 "build-levels",
                 current_flow=maximum_flow,
                 queue=[source],
+                metrics=counters.to_dict(),
             )
         while queue:
             vertex = queue.popleft()
@@ -69,6 +70,7 @@ def dinic(
                             edge_index=edge_index,
                             levels=list(levels),
                             queue=list(queue),
+                            metrics=counters.to_dict(),
                         )
         return levels
 
@@ -115,6 +117,7 @@ def dinic(
                     available=available,
                     levels=levels,
                     current_arc=list(current_edge),
+                    metrics=counters.to_dict(),
                 )
             if vertex == sink:
                 return available

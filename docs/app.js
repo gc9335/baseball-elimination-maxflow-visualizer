@@ -1,4 +1,5 @@
-const MANIFEST_URL = "./data/manifest.json";
+const ASSET_VERSION = "20260624-2";
+const MANIFEST_URL = `./data/manifest.json?v=${ASSET_VERSION}`;
 
 const SIGNIFICANT_EVENTS = new Set([
   "network-built",
@@ -147,7 +148,7 @@ async function loadTrace() {
   stopPlayback();
   setLoading(true);
   try {
-    const response = await fetch(`./data/${traceFile()}`);
+    const response = await fetch(`./data/${traceFile()}?v=${ASSET_VERSION}`);
     if (!response.ok) throw new Error(`轨迹文件载入失败：${response.status}`);
     state.trace = await response.json();
     state.step = 0;
@@ -469,11 +470,26 @@ function metricCard(label, value) {
   return `<div class="event-metric"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
 }
 
+function metricsAtStep() {
+  for (let index = state.step; index >= 0; index -= 1) {
+    const metrics = state.trace.events[index]?.payload?.metrics;
+    if (metrics) return metrics;
+  }
+  return {
+    edge_inspections: 0,
+    bfs_rounds: 0,
+    dfs_calls: 0,
+    queue_pushes: 0,
+    augmentations: 0,
+    current_arc_skips: 0,
+  };
+}
+
 function renderCurrent({ event }) {
   elements.eventType.textContent = event.type.replaceAll("-", " ");
   elements.eventTitle.textContent = event.title;
   elements.eventDetail.textContent = event.detail || "当前事件没有补充说明。";
-  const payloadMetrics = event.payload.metrics ?? state.trace.metrics;
+  const payloadMetrics = metricsAtStep();
   elements.eventMetrics.innerHTML = [
     metricCard(
       "当前流量",
@@ -525,7 +541,7 @@ function chips(values, empty = "—") {
 
 function renderAlgorithmState({ event }) {
   const payload = event.payload;
-  const metrics = payload.metrics ?? state.trace.metrics;
+  const metrics = metricsAtStep();
   const sections = [];
   if (payload.queue) {
     sections.push(`

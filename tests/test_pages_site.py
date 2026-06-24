@@ -43,5 +43,7 @@ def test_site_has_responsive_and_accessible_styles():
     html = Path("docs/index.html").read_text(encoding="utf-8")
 
     assert "@media (max-width: 960px)" in css
+    assert "grid-template-columns: minmax(0, 1fr)" in css
+    assert "min-width: 0" in css
     assert "--paper: #f6f1e8" in css
     assert 'aria-label="最大流残量网络"' in html

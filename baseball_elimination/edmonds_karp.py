@@ -35,6 +35,7 @@ def edmonds_karp(
                 "bfs-search",
                 current_flow=maximum_flow,
                 queue=[source],
+                metrics=counters.to_dict(),
             )
         parent: list[tuple[int, int] | None] = [None] * network.vertex_count
         parent[source] = (source, -1)
@@ -63,6 +64,7 @@ def edmonds_karp(
                         to_vertex=edge.to,
                         edge_index=edge_index,
                         queue=list(queue),
+                        metrics=counters.to_dict(),
                     )
                 if edge.to == sink:
                     break
@@ -112,6 +114,7 @@ def edmonds_karp(
                 path=path_vertices,
                 path_edges=path_edges,
                 bottleneck=bottleneck,
+                metrics=counters.to_dict(),
             )
         vertex = sink
         while vertex != source:
