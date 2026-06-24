@@ -5,7 +5,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping
+from typing import Callable, Mapping
+
+from .dinic import dinic
+from .edmonds_karp import edmonds_karp
+from .flow_network import FlowNetwork
+
+
+@dataclass(frozen=True)
+class EliminationResult:
+    """Result and max-flow certificate for one target team."""
+
+    team: str
+    eliminated: bool
+    trivial: bool
+    maximum_wins: int
+    max_flow: int
+    required_flow: int
+    certificate: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -130,3 +147,92 @@ class BaseballDivision:
 
     def against(self, team1: str, team2: str) -> int:
         return self._games[self._team_index(team1)][self._team_index(team2)]
+
+    def analyze(
+        self,
+        team: str,
+        algorithm: str = "dinic",
+    ) -> EliminationResult:
+        """Determine whether team is mathematically eliminated."""
+
+        solvers: dict[str, Callable[[FlowNetwork, int, int], int]] = {
+            "edmonds-karp": edmonds_karp,
+            "dinic": dinic,
+        }
+        try:
+            solver = solvers[algorithm]
+        except KeyError as exc:
+            choices = ", ".join(solvers)
+            raise ValueError(
+                f"unknown algorithm {algorithm!r}; choose one of: {choices}"
+            ) from exc
+
+        target = self._team_index(team)
+        maximum_wins = self._wins[target] + self._remaining[target]
+        trivial_certificate = tuple(
+            name
+            for index, name in enumerate(self.teams)
+            if index != target and self._wins[index] > maximum_wins
+        )
+        if trivial_certificate:
+            return EliminationResult(
+                team,
+                True,
+                True,
+                maximum_wins,
+                0,
+                0,
+                trivial_certificate,
+            )
+
+        opponents = [index for index in range(self.number_of_teams) if index != target]
+        game_pairs = [
+            (first, second)
+            for pair_index, first in enumerate(opponents)
+            for second in opponents[pair_index + 1 :]
+        ]
+        source = 0
+        first_game_vertex = 1
+        first_team_vertex = first_game_vertex + len(game_pairs)
+        team_vertices = {
+            team_index: first_team_vertex + offset
+            for offset, team_index in enumerate(opponents)
+        }
+        sink = first_team_vertex + len(opponents)
+        network = FlowNetwork(sink + 1)
+
+        required_flow = sum(self._games[first][second] for first, second in game_pairs)
+        infinite_capacity = required_flow + 1
+        for offset, (first, second) in enumerate(game_pairs):
+            game_vertex = first_game_vertex + offset
+            network.add_edge(source, game_vertex, self._games[first][second])
+            network.add_edge(game_vertex, team_vertices[first], infinite_capacity)
+            network.add_edge(game_vertex, team_vertices[second], infinite_capacity)
+
+        for opponent in opponents:
+            network.add_edge(
+                team_vertices[opponent],
+                sink,
+                maximum_wins - self._wins[opponent],
+            )
+
+        maximum_flow = solver(network, source, sink)
+        eliminated = maximum_flow < required_flow
+        certificate: tuple[str, ...] = ()
+        if eliminated:
+            source_side = network.source_side(source)
+            certificate = tuple(
+                self.teams[opponent]
+                for opponent in opponents
+                if team_vertices[opponent] in source_side
+            )
+
+        return EliminationResult(
+            team,
+            eliminated,
+            False,
+            maximum_wins,
+            maximum_flow,
+            required_flow,
+            certificate,
+        )
