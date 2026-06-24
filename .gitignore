@@ -10,11 +10,5 @@ venv/
 .vs/
 .worktrees/
 
-# Generated benchmark artifacts are reproducible.
-output/*.csv
-output/*.png
-output/*.txt
-!output/.gitkeep
-
 # Temporary downloads
 *.tmp

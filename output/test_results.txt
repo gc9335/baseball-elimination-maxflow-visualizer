@@ -1,0 +1,40 @@
+Official Princeton dataset correctness check
+============================================
+teams1.txt: teams=1, eliminated=0, solvers=consistent
+teams4.txt: teams=4, eliminated=2, solvers=consistent
+teams4a.txt: teams=4, eliminated=2, solvers=consistent
+teams4b.txt: teams=4, eliminated=3, solvers=consistent
+teams5.txt: teams=5, eliminated=1, solvers=consistent
+teams5a.txt: teams=5, eliminated=1, solvers=consistent
+teams5b.txt: teams=5, eliminated=1, solvers=consistent
+teams5c.txt: teams=5, eliminated=2, solvers=consistent
+teams7.txt: teams=7, eliminated=2, solvers=consistent
+teams8.txt: teams=8, eliminated=2, solvers=consistent
+teams10.txt: teams=10, eliminated=1, solvers=consistent
+teams12-allgames.txt: teams=12, eliminated=10, solvers=consistent
+teams12.txt: teams=12, eliminated=4, solvers=consistent
+teams24.txt: teams=24, eliminated=10, solvers=consistent
+teams29.txt: teams=29, eliminated=17, solvers=consistent
+teams30.txt: teams=30, eliminated=5, solvers=consistent
+teams32.txt: teams=32, eliminated=9, solvers=consistent
+teams36.txt: teams=36, eliminated=2, solvers=consistent
+teams42.txt: teams=42, eliminated=8, solvers=consistent
+teams48.txt: teams=48, eliminated=6, solvers=consistent
+teams50.txt: teams=50, eliminated=0, solvers=consistent
+teams54.txt: teams=54, eliminated=8, solvers=consistent
+teams60.txt: teams=60, eliminated=18, solvers=consistent
+
+Synthetic benchmark medians (ms)
+================================
+random-8 edmonds-karp: 3.352800
+random-8 dinic: 1.509000
+random-12 edmonds-karp: 22.374200
+random-12 dinic: 6.839300
+random-16 edmonds-karp: 101.091500
+random-16 dinic: 14.726100
+random-20 edmonds-karp: 305.652100
+random-20 dinic: 29.456200
+random-24 edmonds-karp: 789.129500
+random-24 dinic: 52.861400
+random-28 edmonds-karp: 1690.694300
+random-28 dinic: 88.961900
