@@ -3,6 +3,7 @@
 from .baseball import BaseballDivision, EliminationResult
 from .dinic import dinic
 from .flow_network import Edge, FlowNetwork
+from .tracing import AlgorithmMetrics, TraceEvent, TraceRecorder
 from .edmonds_karp import edmonds_karp
 
 __all__ = [
@@ -10,6 +11,9 @@ __all__ = [
     "EliminationResult",
     "Edge",
     "FlowNetwork",
+    "AlgorithmMetrics",
+    "TraceEvent",
+    "TraceRecorder",
     "dinic",
     "edmonds_karp",
 ]
