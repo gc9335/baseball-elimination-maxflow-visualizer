@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="棒球淘汰问题的 Edmonds–Karp 与 Dinic 最大流动态可视化实验台"
+    />
+    <title>棒球淘汰 · 最大流动态实验台</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="paper-grid" aria-hidden="true"></div>
+    <main class="shell">
+      <header class="hero panel">
+        <div class="hero-copy">
+          <p class="eyebrow">Maximum Flow Learning Studio</p>
+          <h1>棒球淘汰 · 最大流动态实验台</h1>
+          <p class="hero-summary">
+            把流网络构造、BFS 分层、增广、阻塞流、残量更新和最小割证明，
+            绑定到同一条可回放时间轴。
+          </p>
+        </div>
+        <div class="hero-metrics" aria-label="当前关键指标">
+          <article class="hero-metric">
+            <span>当前最大流</span>
+            <strong id="metric-flow">—</strong>
+          </article>
+          <article class="hero-metric">
+            <span>动画步骤</span>
+            <strong id="metric-step">—</strong>
+          </article>
+          <article class="hero-metric">
+            <span>算法</span>
+            <strong id="metric-algorithm">—</strong>
+          </article>
+          <article class="hero-metric">
+            <span>判定</span>
+            <strong id="metric-result">—</strong>
+          </article>
+        </div>
+      </header>
+
+      <section class="control-panel panel" aria-label="实验控制">
+        <div class="control-grid">
+          <label>
+            <span>内置数据集</span>
+            <select id="dataset-select"></select>
+          </label>
+          <label>
+            <span>目标球队</span>
+            <select id="team-select"></select>
+          </label>
+          <label>
+            <span>最大流算法</span>
+            <select id="algorithm-select">
+              <option value="dinic">Dinic（优化）</option>
+              <option value="edmonds-karp">Edmonds–Karp（基准）</option>
+            </select>
+          </label>
+          <label>
+            <span>播放速度</span>
+            <select id="speed-select">
+              <option value="1200">0.5×</option>
+              <option value="700" selected>1×</option>
+              <option value="360">2×</option>
+              <option value="180">4×</option>
+            </select>
+          </label>
+          <button id="reload-button" class="secondary-button" type="button">
+            重新计算
+          </button>
+        </div>
+
+        <div class="playback-row">
+          <div class="playback-buttons" role="group" aria-label="动画播放控制">
+            <button id="first-button" type="button" title="跳到开始">⏮</button>
+            <button id="previous-button" type="button" title="上一步">◀</button>
+            <button id="play-button" class="primary-button" type="button">
+              播放
+            </button>
+            <button id="next-button" type="button" title="下一步">▶</button>
+            <button id="last-button" type="button" title="跳到结束">⏭</button>
+            <button id="reset-view-button" type="button">重置视图</button>
+          </div>
+          <div class="step-progress">
+            <div class="step-progress-label">
+              <span id="step-label">等待数据</span>
+              <span id="progress-percent">0%</span>
+            </div>
+            <div class="progress-track" aria-hidden="true">
+              <i id="progress-fill"></i>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard">
+        <article class="stage-panel panel">
+          <div class="panel-head">
+            <div>
+              <p class="section-kicker">Residual Network</p>
+              <h2>残量网络主舞台</h2>
+              <p id="stage-caption">
+                源点 → 比赛节点 → 球队节点 → 汇点
+              </p>
+            </div>
+            <span id="layout-badge" class="status-badge">自适应四层</span>
+          </div>
+
+          <div class="network-wrap">
+            <svg
+              id="network-stage"
+              viewBox="0 0 1200 680"
+              role="img"
+              aria-label="最大流残量网络"
+            ></svg>
+            <div id="network-empty" class="network-empty" hidden></div>
+          </div>
+
+          <div class="network-legend" aria-label="网络图例">
+            <span><i class="legend-line current"></i>当前搜索/增广路</span>
+            <span><i class="legend-line residual"></i>可用残量边</span>
+            <span><i class="legend-line saturated"></i>饱和边</span>
+            <span><i class="legend-node cut"></i>最小割源侧</span>
+          </div>
+        </article>
+
+        <aside class="teaching-panel panel">
+          <div class="tab-list" role="tablist" aria-label="教学信息">
+            <button
+              id="tab-current"
+              class="tab-button active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              data-panel="panel-current"
+            >
+              当前步骤
+            </button>
+            <button
+              id="tab-pseudocode"
+              class="tab-button"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-panel="panel-pseudocode"
+            >
+              伪代码
+            </button>
+            <button
+              id="tab-state"
+              class="tab-button"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-panel="panel-state"
+            >
+              算法状态
+            </button>
+          </div>
+
+          <section id="panel-current" class="tab-panel active" role="tabpanel">
+            <div class="event-card">
+              <p id="event-type" class="event-type">WAITING</p>
+              <h3 id="event-title">等待载入轨迹</h3>
+              <p id="event-detail">请选择数据集、目标球队和算法。</p>
+            </div>
+            <div id="event-metrics" class="event-metrics"></div>
+            <div id="result-card" class="result-card"></div>
+          </section>
+
+          <section
+            id="panel-pseudocode"
+            class="tab-panel"
+            role="tabpanel"
+            hidden
+          >
+            <ol id="pseudocode-list" class="pseudocode-list"></ol>
+          </section>
+
+          <section id="panel-state" class="tab-panel" role="tabpanel" hidden>
+            <div id="algorithm-state" class="algorithm-state"></div>
+          </section>
+        </aside>
+
+        <article class="timeline-panel panel">
+          <div class="panel-head compact">
+            <div>
+              <p class="section-kicker">Trace Timeline</p>
+              <h2>可点击时间轴</h2>
+              <p>聚合显示构网、搜索、增广、分层和最小割等关键事件。</p>
+            </div>
+            <span id="timeline-count" class="status-badge">0 个关键事件</span>
+          </div>
+          <div id="timeline" class="timeline"></div>
+        </article>
+      </section>
+
+      <section class="performance-section panel">
+        <div class="panel-head">
+          <div>
+            <p class="section-kicker">Extended Benchmarks</p>
+            <h2>算法性能实验</h2>
+            <p>
+              同时观察耗时、加速比、密度敏感性、操作次数、峰值内存和官方数据表现。
+            </p>
+          </div>
+          <a class="report-link" href="../实验报告.md">查看 Markdown 实验报告</a>
+        </div>
+        <div class="chart-grid">
+          <figure>
+            <img src="./output/runtime_scaling.png" alt="运行时间随球队规模变化" />
+            <figcaption>规模增长与运行时间</figcaption>
+          </figure>
+          <figure>
+            <img src="./output/speedup_scaling.png" alt="Dinic 加速比" />
+            <figcaption>Dinic 相对加速比</figcaption>
+          </figure>
+          <figure>
+            <img src="./output/density_runtime.png" alt="网络密度与运行时间" />
+            <figcaption>赛程密度敏感性</figcaption>
+          </figure>
+          <figure>
+            <img src="./output/operation_counts.png" alt="算法操作计数" />
+            <figcaption>搜索与推流操作计数</figcaption>
+          </figure>
+          <figure>
+            <img src="./output/memory_scaling.png" alt="峰值内存随规模变化" />
+            <figcaption>峰值内存增长</figcaption>
+          </figure>
+          <figure>
+            <img
+              src="./output/official_runtime_scatter.png"
+              alt="官方数据网络边数与运行时间"
+            />
+            <figcaption>Princeton 官方数据散点</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <footer>
+        Python 生成算法轨迹 · 静态网页负责回放 · 数据与结论保持单一事实来源
+      </footer>
+    </main>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>
