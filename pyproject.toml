@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+addopts = "--basetemp=.pytest-tmp"
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
