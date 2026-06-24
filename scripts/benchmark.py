@@ -375,6 +375,7 @@ def _median_rows(
                 "edge_inspections": int(representative.get("edge_inspections", 0)),
                 "bfs_rounds": int(representative.get("bfs_rounds", 0)),
                 "dfs_calls": int(representative.get("dfs_calls", 0)),
+                "queue_pushes": int(representative.get("queue_pushes", 0)),
                 "augmentations": int(representative.get("augmentations", 0)),
                 "level_phases": int(representative.get("level_phases", 0)),
             }
@@ -565,7 +566,7 @@ def _plot_operation_counts(rows: list[dict[str, object]], path: Path) -> None:
     metrics = (
         ("edge_inspections", "Residual-edge inspections"),
         ("bfs_rounds", "BFS / level-build rounds"),
-        ("augmentations", "Successful flow pushes"),
+        ("queue_pushes", "BFS queue insertions"),
     )
     for ax, (field, label) in zip(axes, metrics, strict=True):
         for algorithm, marker, linestyle in (
