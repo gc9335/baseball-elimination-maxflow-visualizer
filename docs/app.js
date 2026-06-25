@@ -1,4 +1,4 @@
-const ASSET_VERSION = "20260624-2";
+const ASSET_VERSION = "20260625-1";
 const MANIFEST_URL = `./data/manifest.json?v=${ASSET_VERSION}`;
 
 const SIGNIFICANT_EVENTS = new Set([
@@ -69,6 +69,10 @@ const elements = {
   networkEmpty: $("network-empty"),
   stageCaption: $("stage-caption"),
   layoutBadge: $("layout-badge"),
+  flowPhase: $("flow-phase-indicator"),
+  flowPhaseKicker: $("flow-phase-kicker"),
+  flowPhaseTitle: $("flow-phase-title"),
+  flowPhaseDetail: $("flow-phase-detail"),
   eventType: $("event-type"),
   eventTitle: $("event-title"),
   eventDetail: $("event-detail"),
@@ -224,6 +228,7 @@ function renderAll() {
   if (!state.trace) return;
   const frame = deriveFrame();
   renderHeader(frame);
+  renderFlowPhase(frame);
   renderNetwork(frame);
   renderCurrent(frame);
   renderPseudocode(frame);
@@ -284,6 +289,41 @@ function activeEdgePairs(event) {
     pairs.add(`${event.payload.from_vertex}:${event.payload.to_vertex}`);
   }
   return pairs;
+}
+
+function eventPhase(event) {
+  if (!event) return "idle";
+  if (["search-start", "vertex-discovered", "level-built", "dfs-enter"].includes(event.type)) {
+    return "search";
+  }
+  if (event.type === "path-found") return "path";
+  if (["augment", "blocking-flow"].includes(event.type)) return "push";
+  if (event.type === "min-cut") return "cut";
+  if (event.type === "completed") return "complete";
+  if (event.type === "trivial-check") return "direct";
+  return "build";
+}
+
+function renderFlowPhase({ event }) {
+  const phase = eventPhase(event);
+  const phaseLabels = {
+    idle: "准备",
+    build: "构造网络",
+    search: "搜索残量路",
+    path: "找到增广路",
+    push: "推送流量",
+    cut: "提取最小割",
+    complete: "计算完成",
+    direct: "直接淘汰",
+  };
+  const pushed = event.payload.pushed ?? event.payload.bottleneck;
+  elements.flowPhase.className = `flow-phase-indicator phase-${phase}`;
+  elements.flowPhaseKicker.textContent = phaseLabels[phase];
+  elements.flowPhaseTitle.textContent = event.title;
+  elements.flowPhaseDetail.textContent =
+    pushed == null
+      ? event.detail || "观察高亮节点和边的变化"
+      : `本步流量变化：${pushed}；${event.detail || "残量网络已同步更新"}`;
 }
 
 function spreadPositions(count, minY = 70, maxY = 610) {
@@ -359,7 +399,7 @@ function renderNetwork(frame) {
     ? "完整四层网络"
     : `聚合 ${hiddenGames.length} 个比赛节点`;
   elements.stageCaption.textContent =
-    "拖动画布或滚轮缩放；橙色表示当前搜索或增广路径。";
+    "拖动画布或滚轮缩放；蓝色表示搜索，橙色表示已找到路径，绿色表示正在推流。";
 
   const groups = {
     source: visibleNodes.filter((node) => node.kind === "source"),
@@ -380,6 +420,7 @@ function renderNetwork(frame) {
     frame.edges.map((edge) => [`${edge.start}:${edge.edge_index}`, edge]),
   );
   const activePairs = activeEdgePairs(frame.event);
+  const phase = eventPhase(frame.event);
   const sourceSide = new Set(frame.event.payload.source_side ?? []);
   const visibleIds = new Set(visibleNodes.map((node) => node.id));
   const graphEdges = state.trace.network.edges.filter(
@@ -389,7 +430,9 @@ function renderNetwork(frame) {
   const defs = `
     <defs>
       <marker id="arrow-default" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L0 9 L9 4.5 z" fill="#808995"/></marker>
-      <marker id="arrow-warm" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L0 9 L9 4.5 z" fill="#f28f3b"/></marker>
+      <marker id="arrow-search" markerWidth="12" markerHeight="12" refX="10.5" refY="6" orient="auto"><path d="M0 0 L0 12 L12 6 z" fill="#1479ff"/></marker>
+      <marker id="arrow-path" markerWidth="12" markerHeight="12" refX="10.5" refY="6" orient="auto"><path d="M0 0 L0 12 L12 6 z" fill="#ff7a00"/></marker>
+      <marker id="arrow-push" markerWidth="12" markerHeight="12" refX="10.5" refY="6" orient="auto"><path d="M0 0 L0 12 L12 6 z" fill="#00a878"/></marker>
       <marker id="arrow-red" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0 L0 9 L9 4.5 z" fill="#b42318"/></marker>
     </defs>`;
 
@@ -405,10 +448,11 @@ function renderNetwork(frame) {
       const active = activePairs.has(pairKey);
       const saturated = snapshot.residual === 0 && edge.capacity > 0;
       const className = active
-        ? "network-edge active"
+        ? `network-edge active phase-${phase}`
         : saturated
           ? "network-edge saturated"
           : "network-edge available";
+      const labelClass = active ? `active phase-${phase}` : "";
       const startDim = nodeDimensions(
         visibleNodes.find((node) => node.id === edge.start),
       );
@@ -424,9 +468,9 @@ function renderNetwork(frame) {
           <path class="${className}" d="M ${x1} ${start.y} L ${x2} ${end.y}">
             <title>流量 ${snapshot.flow} / 容量 ${edge.capacity}；剩余 ${snapshot.residual}</title>
           </path>
-          <g class="edge-label" transform="translate(${midX - 25} ${midY - 11})">
-            <rect width="50" height="22" rx="7"></rect>
-            <text x="25" y="15" text-anchor="middle">${snapshot.flow} / ${edge.capacity}</text>
+          <g class="edge-label ${labelClass}" transform="translate(${midX - 37} ${midY - 16})">
+            <rect width="74" height="32" rx="10"></rect>
+            <text x="37" y="22" text-anchor="middle">${snapshot.flow} / ${edge.capacity}</text>
           </g>
         </g>`;
     })
@@ -452,6 +496,7 @@ function renderNetwork(frame) {
         node.kind,
         node.kind === "source" || node.kind === "sink" ? "endpoint" : "",
         active ? "active" : "",
+        active ? `phase-${phase}` : "",
         cut ? "cut" : "",
       ]
         .filter(Boolean)

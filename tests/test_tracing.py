@@ -74,3 +74,6 @@ def test_dinic_emits_level_and_blocking_flow_events():
     assert metrics.level_phases >= 1
     assert metrics.dfs_calls >= 1
     assert metrics.blocking_flow_pushes >= 1
+    pushes = [event for event in recorder.events if event.type == "blocking-flow"]
+    assert all(event.payload["path"][0] == 0 for event in pushes)
+    assert all(event.payload["path"][-1] == 3 for event in pushes)

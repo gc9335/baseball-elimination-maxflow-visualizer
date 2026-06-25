@@ -103,8 +103,10 @@ def dinic(
                 metrics=counters.to_dict(),
             )
         current_edge = [0] * vertex_count
+        last_push_path: list[int] = []
 
         def send_flow(vertex: int, available: int, path: list[int]) -> int:
+            nonlocal last_push_path
             counters.dfs_calls += 1
             if recorder is not None:
                 recorder.emit(
@@ -120,6 +122,7 @@ def dinic(
                     metrics=counters.to_dict(),
                 )
             if vertex == sink:
+                last_push_path = path + [vertex]
                 return available
 
             while current_edge[vertex] < len(network.graph[vertex]):
@@ -142,6 +145,7 @@ def dinic(
             return 0
 
         while True:
+            last_push_path = []
             pushed = send_flow(source, infinity, [])
             if pushed == 0:
                 break
@@ -156,6 +160,7 @@ def dinic(
                     "blocking-flow",
                     current_flow=maximum_flow,
                     pushed=pushed,
+                    path=list(last_push_path),
                     levels=levels,
                     current_arc=list(current_edge),
                     edges=snapshot_network(network),

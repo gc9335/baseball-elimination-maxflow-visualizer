@@ -9,7 +9,7 @@
     />
     <title>棒球淘汰 · 最大流动态实验台</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260624-3" />
+    <link rel="stylesheet" href="./styles.css?v=20260625-1" />
   </head>
   <body>
     <div class="paper-grid" aria-hidden="true"></div>
@@ -110,6 +110,16 @@
             <span id="layout-badge" class="status-badge">自适应四层</span>
           </div>
 
+          <div
+            id="flow-phase-indicator"
+            class="flow-phase-indicator phase-idle"
+            aria-live="polite"
+          >
+            <span id="flow-phase-kicker">准备</span>
+            <strong id="flow-phase-title">等待最大流轨迹</strong>
+            <small id="flow-phase-detail">选择球队和算法后开始回放</small>
+          </div>
+
           <div class="network-wrap">
             <svg
               id="network-stage"
@@ -121,7 +131,9 @@
           </div>
 
           <div class="network-legend" aria-label="网络图例">
-            <span><i class="legend-line current"></i>当前搜索/增广路</span>
+            <span><i class="legend-line search"></i>正在搜索</span>
+            <span><i class="legend-line path"></i>找到增广路</span>
+            <span><i class="legend-line push"></i>正在推流</span>
             <span><i class="legend-line residual"></i>可用残量边</span>
             <span><i class="legend-line saturated"></i>饱和边</span>
             <span><i class="legend-node cut"></i>最小割源侧</span>
@@ -199,57 +211,11 @@
         </article>
       </section>
 
-      <section class="performance-section panel">
-        <div class="panel-head">
-          <div>
-            <p class="section-kicker">Extended Benchmarks</p>
-            <h2>算法性能实验</h2>
-            <p>
-              同时观察耗时、加速比、密度敏感性、操作次数、峰值内存和官方数据表现。
-            </p>
-          </div>
-          <a
-            class="report-link"
-            href="https://github.com/gc9335/baseball-elimination-maxflow-visualizer/blob/main/%E5%AE%9E%E9%AA%8C%E6%8A%A5%E5%91%8A.md"
-            >查看 Markdown 实验报告</a
-          >
-        </div>
-        <div class="chart-grid">
-          <figure>
-            <img src="./output/runtime_scaling.png" alt="运行时间随球队规模变化" />
-            <figcaption>规模增长与运行时间</figcaption>
-          </figure>
-          <figure>
-            <img src="./output/speedup_scaling.png" alt="Dinic 加速比" />
-            <figcaption>Dinic 相对加速比</figcaption>
-          </figure>
-          <figure>
-            <img src="./output/density_runtime.png" alt="网络密度与运行时间" />
-            <figcaption>赛程密度敏感性</figcaption>
-          </figure>
-          <figure>
-            <img src="./output/operation_counts.png" alt="算法操作计数" />
-            <figcaption>搜索与推流操作计数</figcaption>
-          </figure>
-          <figure>
-            <img src="./output/memory_scaling.png" alt="峰值内存随规模变化" />
-            <figcaption>峰值内存增长</figcaption>
-          </figure>
-          <figure>
-            <img
-              src="./output/official_runtime_scatter.png"
-              alt="官方数据网络边数与运行时间"
-            />
-            <figcaption>Princeton 官方数据散点</figcaption>
-          </figure>
-        </div>
-      </section>
-
       <footer>
-        Python 生成算法轨迹 · 静态网页负责回放 · 数据与结论保持单一事实来源
+        Python 生成算法轨迹 · 静态网页逐步回放搜索、增广与残量更新
       </footer>
     </main>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script type="module" src="./app.js?v=20260624-3"></script>
+    <script type="module" src="./app.js?v=20260625-1"></script>
   </body>
 </html>

@@ -47,3 +47,25 @@ def test_site_has_responsive_and_accessible_styles():
     assert "min-width: 0" in css
     assert "--paper: #f6f1e8" in css
     assert 'aria-label="最大流残量网络"' in html
+
+
+def test_site_focuses_on_the_flow_process_instead_of_benchmark_images():
+    html = Path("docs/index.html").read_text(encoding="utf-8")
+
+    assert 'id="flow-phase-indicator"' in html
+    assert "performance-section" not in html
+    assert "chart-grid" not in html
+    assert "./output/" not in html
+
+
+def test_network_styles_make_capacity_and_flow_phases_prominent():
+    css = Path("docs/styles.css").read_text(encoding="utf-8")
+    javascript = Path("docs/app.js").read_text(encoding="utf-8")
+
+    assert ".network-edge.phase-search" in css
+    assert ".network-edge.phase-path" in css
+    assert ".network-edge.phase-push" in css
+    assert ".edge-label.phase-push" in css
+    assert "font-size: 16px" in css
+    assert "function eventPhase" in javascript
+    assert "flowPhase" in javascript
