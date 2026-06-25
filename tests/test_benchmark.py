@@ -145,7 +145,35 @@ def test_benchmark_subtitle_uses_actual_repeat_count():
         for repeat in range(1, 4)
     ]
 
-    assert "3 repeated runs" in benchmark_subtitle(rows)
+    assert "重复 3 次" in benchmark_subtitle(rows)
+
+
+def test_chart_copy_uses_chinese_for_report_images():
+    source = Path("scripts/benchmark.py").read_text(encoding="utf-8")
+
+    for forbidden in [
+        "Number of teams",
+        "Median elapsed time",
+        "Operation counters explain",
+        "Official datasets confirm",
+        "Scheduled-pair density",
+        "Peak traced memory",
+        "Logical flow-network edges",
+        "Residual-edge inspections",
+        "BFS queue insertions",
+        "Speedup uses paired",
+    ]:
+        assert forbidden not in source
+
+    for expected in [
+        "球队数量",
+        "中位运行时间",
+        "赛程密度",
+        "残量边检查次数",
+        "峰值内存",
+        "官方数据集",
+    ]:
+        assert expected in source
 
 
 def test_profile_division_collects_network_and_operation_metrics():

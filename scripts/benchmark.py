@@ -56,8 +56,21 @@ CSV_FIELDS = [
     "reverse_edge_uses",
 ]
 ALGORITHMS = ("edmonds-karp", "dinic")
-FONT_FAMILY = ["Segoe UI", "DejaVu Sans", "Arial", "sans-serif"]
-MONO_FONT_FAMILY = ["Consolas", "DejaVu Sans Mono", "monospace"]
+FONT_FAMILY = [
+    "Microsoft YaHei",
+    "SimHei",
+    "Noto Sans CJK SC",
+    "Segoe UI",
+    "DejaVu Sans",
+    "sans-serif",
+]
+MONO_FONT_FAMILY = [
+    "Cascadia Mono",
+    "Consolas",
+    "Microsoft YaHei",
+    "DejaVu Sans Mono",
+    "monospace",
+]
 TOKENS = {
     "surface": "#FCFCFD",
     "panel": "#FFFFFF",
@@ -79,12 +92,13 @@ COLORS = {
     },
 }
 LABELS = {
-    "edmonds-karp": "Edmonds–Karp",
-    "dinic": "Dinic",
+    "edmonds-karp": "埃德蒙兹-卡普",
+    "dinic": "迪尼茨算法",
 }
 
 
 def use_chart_theme() -> None:
+    plt.rcParams["axes.unicode_minus"] = False
     sns.set_theme(
         style="whitegrid",
         rc={
@@ -404,10 +418,7 @@ def benchmark_subtitle(rows: list[dict[str, object]]) -> str:
         ),
         default=0,
     )
-    return (
-        "Median time to analyze every team; "
-        f"{repeats} repeated runs after one warm-up"
-    )
+    return f"分析全部球队的中位耗时；预热 1 次后重复 {repeats} 次"
 
 
 def _plot_runtime_scaling(
@@ -439,8 +450,8 @@ def _plot_runtime_scaling(
     values = [float(row["median_ms"]) for row in medians if row["median_ms"]]
     if values and max(values) / min(values) >= 100:
         ax.set_yscale("log")
-    ax.set_xlabel("Number of teams")
-    ax.set_ylabel("Median elapsed time (ms)")
+    ax.set_xlabel("球队数量")
+    ax.set_ylabel("中位运行时间（毫秒）")
     ax.legend(
         loc="lower left",
         bbox_to_anchor=(0, 1.02),
@@ -452,9 +463,8 @@ def _plot_runtime_scaling(
     add_chart_header(
         fig,
         ax,
-        "Dinic scales more smoothly as the division grows",
-        benchmark_subtitle(rows)
-        + "; dense synthetic schedules, complete all-team elimination analysis.",
+        "球队规模增大时，迪尼茨算法增长更平稳",
+        benchmark_subtitle(rows) + "；稠密随机赛程，统计全部球队淘汰判定。",
     )
     save_chart(fig, path)
 
@@ -500,15 +510,14 @@ def _plot_speedup(rows: list[dict[str, object]], path: Path) -> None:
         fontsize=8.5,
         color=TOKENS["ink"],
     )
-    ax.set_xlabel("Number of teams")
-    ax.set_ylabel("Edmonds–Karp time / Dinic time")
+    ax.set_xlabel("球队数量")
+    ax.set_ylabel("基准算法耗时 / 优化算法耗时")
     ax.grid(axis="x", visible=False)
     add_chart_header(
         fig,
         ax,
-        "Dinic's advantage becomes visible on larger flow networks",
-        "Speedup uses paired median runtimes from the dense scaling experiment; "
-        "the dotted line marks equal performance.",
+        "规模越大，迪尼茨算法加速越明显",
+        "使用稠密规模实验的配对中位耗时计算；虚线表示两种算法耗时相同。",
     )
     save_chart(fig, path)
 
@@ -535,8 +544,8 @@ def _plot_density_runtime(rows: list[dict[str, object]], path: Path) -> None:
             linewidth=1.3,
             label=LABELS[algorithm],
         )
-    ax.set_xlabel("Scheduled-pair density (%)")
-    ax.set_ylabel("Median elapsed time (ms)")
+    ax.set_xlabel("赛程密度（非零剩余对局比例，%）")
+    ax.set_ylabel("中位运行时间（毫秒）")
     ax.xaxis.set_major_formatter(mticker.PercentFormatter(100))
     ax.legend(
         loc="lower left",
@@ -549,9 +558,8 @@ def _plot_density_runtime(rows: list[dict[str, object]], path: Path) -> None:
     add_chart_header(
         fig,
         ax,
-        "Denser remaining schedules create harder elimination networks",
-        "Fixed team count with the probability of a nonzero remaining matchup "
-        "varied from sparse to dense; medians include all target teams.",
+        "剩余赛程越密，网络越难分配",
+        "固定球队数量，改变球队对之间存在剩余比赛的比例；中位数覆盖所有目标球队。",
     )
     save_chart(fig, path)
 
@@ -564,9 +572,9 @@ def _plot_operation_counts(rows: list[dict[str, object]], path: Path) -> None:
     use_chart_theme()
     fig, axes = plt.subplots(1, 3, figsize=(14.5, 5.4))
     metrics = (
-        ("edge_inspections", "Residual-edge inspections"),
-        ("bfs_rounds", "BFS / level-build rounds"),
-        ("queue_pushes", "BFS queue insertions"),
+        ("edge_inspections", "残量边检查次数"),
+        ("bfs_rounds", "BFS / 分层轮数"),
+        ("queue_pushes", "BFS 队列入队次数"),
     )
     for ax, (field, label) in zip(axes, metrics, strict=True):
         for algorithm, marker, linestyle in (
@@ -584,7 +592,7 @@ def _plot_operation_counts(rows: list[dict[str, object]], path: Path) -> None:
                 linewidth=1.2,
                 label=LABELS[algorithm],
             )
-        ax.set_xlabel("Teams")
+        ax.set_xlabel("球队数量")
         ax.set_ylabel(label)
         ax.grid(axis="x", visible=False)
         if field == "edge_inspections":
@@ -603,7 +611,7 @@ def _plot_operation_counts(rows: list[dict[str, object]], path: Path) -> None:
     fig.text(
         left,
         0.975,
-        "Operation counters explain the runtime gap",
+        "操作计数解释运行时间差距",
         ha="left",
         va="top",
         fontsize=14,
@@ -613,8 +621,7 @@ def _plot_operation_counts(rows: list[dict[str, object]], path: Path) -> None:
     fig.text(
         left,
         0.925,
-        "Counters are summed over all nontrivial target-team networks; "
-        "Dinic reuses a level graph and current arcs within each phase.",
+        "计数汇总所有非直接淘汰目标球队网络；迪尼茨算法在同一阶段复用分层图和当前弧。",
         ha="left",
         va="top",
         fontsize=9.5,
@@ -645,8 +652,8 @@ def _plot_memory_scaling(rows: list[dict[str, object]], path: Path) -> None:
             linewidth=1.3,
             label=LABELS[algorithm],
         )
-    ax.set_xlabel("Number of teams")
-    ax.set_ylabel("Peak traced memory (KiB)")
+    ax.set_xlabel("球队数量")
+    ax.set_ylabel("峰值内存（KiB）")
     ax.legend(
         loc="lower left",
         bbox_to_anchor=(0, 1.02),
@@ -658,9 +665,8 @@ def _plot_memory_scaling(rows: list[dict[str, object]], path: Path) -> None:
     add_chart_header(
         fig,
         ax,
-        "Both solvers share the same dominant network-memory growth",
-        "Peak Python allocations are measured with tracemalloc during complete "
-        "all-team analysis; timing runs are measured separately.",
+        "两种算法的主要内存增长都来自流网络规模",
+        "使用 tracemalloc 测量完整全球队分析期间的峰值 Python 分配；计时实验单独测量。",
     )
     save_chart(fig, path)
 
@@ -701,8 +707,8 @@ def _plot_official_scatter(rows: list[dict[str, object]], path: Path) -> None:
         ax.set_xscale("log")
     if positive_y and max(positive_y) / min(positive_y) >= 100:
         ax.set_yscale("log")
-    ax.set_xlabel("Logical flow-network edges, summed over target teams")
-    ax.set_ylabel("Median elapsed time (ms)")
+    ax.set_xlabel("所有目标球队流网络逻辑边总数")
+    ax.set_ylabel("中位运行时间（毫秒）")
     ax.legend(
         loc="lower left",
         bbox_to_anchor=(0, 1.02),
@@ -713,9 +719,8 @@ def _plot_official_scatter(rows: list[dict[str, object]], path: Path) -> None:
     add_chart_header(
         fig,
         ax,
-        "Official datasets confirm that network size drives runtime",
-        "Each point is one Princeton dataset and one solver; labels identify "
-        "the Dinic point for each dataset.",
+        "官方数据集显示网络规模决定运行时间",
+        "每个点代表一个 Princeton 数据集和一种算法；标签标出优化算法对应的数据集。",
     )
     save_chart(fig, path)
 
