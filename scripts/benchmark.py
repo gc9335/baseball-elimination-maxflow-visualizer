@@ -92,8 +92,8 @@ COLORS = {
     },
 }
 LABELS = {
-    "edmonds-karp": "埃德蒙兹-卡普",
-    "dinic": "迪尼茨算法",
+    "edmonds-karp": "Edmonds-Karp",
+    "dinic": "Dinic",
 }
 
 
@@ -463,7 +463,7 @@ def _plot_runtime_scaling(
     add_chart_header(
         fig,
         ax,
-        "球队规模增大时，迪尼茨算法增长更平稳",
+        "球队规模增大时，Dinic 增长更平稳",
         benchmark_subtitle(rows) + "；稠密随机赛程，统计全部球队淘汰判定。",
     )
     save_chart(fig, path)
@@ -516,7 +516,7 @@ def _plot_speedup(rows: list[dict[str, object]], path: Path) -> None:
     add_chart_header(
         fig,
         ax,
-        "规模越大，迪尼茨算法加速越明显",
+        "规模越大，Dinic 加速越明显",
         "使用稠密规模实验的配对中位耗时计算；虚线表示两种算法耗时相同。",
     )
     save_chart(fig, path)
@@ -621,7 +621,7 @@ def _plot_operation_counts(rows: list[dict[str, object]], path: Path) -> None:
     fig.text(
         left,
         0.925,
-        "计数汇总所有非直接淘汰目标球队网络；迪尼茨算法在同一阶段复用分层图和当前弧。",
+        "计数汇总所有非直接淘汰目标球队网络；Dinic 在同一阶段复用分层图和当前弧。",
         ha="left",
         va="top",
         fontsize=9.5,

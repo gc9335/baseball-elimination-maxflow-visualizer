@@ -3,6 +3,7 @@ from pathlib import Path
 
 from scripts.benchmark import (
     CSV_FIELDS,
+    LABELS,
     benchmark_subtitle,
     generate_random_division,
     plot_benchmark_suite,
@@ -174,6 +175,13 @@ def test_chart_copy_uses_chinese_for_report_images():
         "官方数据集",
     ]:
         assert expected in source
+
+
+def test_algorithm_labels_keep_english_names():
+    assert LABELS == {
+        "edmonds-karp": "Edmonds-Karp",
+        "dinic": "Dinic",
+    }
 
 
 def test_profile_division_collects_network_and_operation_metrics():
